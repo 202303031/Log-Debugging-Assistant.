@@ -1,0 +1,104 @@
+# ============================================================
+# Autonomous DevOps & Log Debugging Assistant
+# Docker Compose Orchestration
+# ============================================================
+
+services:
+
+  # ── PostgreSQL + pgvector ──────────────────────────────────
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: devops-postgres
+    environment:
+      POSTGRES_DB: devops_logs
+      POSTGRES_USER: devops
+      POSTGRES_PASSWORD: devops_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devops -d devops_logs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - devops-network
+
+  # ── Java Victim Service ────────────────────────────────────
+  victim-service:
+    build:
+      context: ./victim-service
+      dockerfile: Dockerfile
+    container_name: devops-victim
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8080:8080"
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  # ── Python AI Engine (Antigravity Agent + Streamlit) ───────
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    container_name: devops-ai-engine
+    depends_on:
+      postgres:
+        condition: service_healthy
+      victim-service:
+        condition: service_started
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=devops_logs
+      - DB_USER=devops
+      - DB_PASSWORD=devops_secret
+      - LOG_FILE_PATH=/app/logs/app.log
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8501:8501"
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  # ── Ollama Local LLM ───────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: devops-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: devops-ollama-init
+    depends_on:
+      - ollama
+    networks:
+      - devops-network
+    entrypoint: /bin/sh
+    command: -c "sleep 5 && ollama pull llama3"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+
+volumes:
+  postgres_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  devops-network:
+    driver: bridge

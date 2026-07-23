@@ -1,0 +1,22 @@
+# Logs
+logs/
+*.log
+
+# Java/Maven
+victim-service/target/
+*.jar
+*.class
+.mvn/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+
+# Docker/OS
+.DS_Store
+Thumbs.db
