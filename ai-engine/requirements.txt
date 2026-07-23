@@ -7,12 +7,12 @@ langchain
 langchain-google-genai
 
 # Database (PostgreSQL + pgvector)
-psycopg2-binary==2.9.9
-pgvector==0.3.2
+psycopg2-binary
+pgvector
 
 # Dashboard
-streamlit==1.37.1
+streamlit
 
 # Utilities
-python-dotenv==1.0.1
-protobuf>=5.28.0
+python-dotenv
+protobuf
