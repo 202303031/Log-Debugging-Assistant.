@@ -1,6 +1,6 @@
 # ============================================
 # AI Engine Dockerfile
-# Runs both the Antigravity agent and Streamlit
+# Runs both the Gemini RAG agent and Streamlit
 # ============================================
 
 FROM python:3.11-slim
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (includes google-antigravity SDK)
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --default-timeout=1000 --upgrade pip && pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
@@ -27,7 +27,7 @@ COPY . .
 # Expose Streamlit port
 EXPOSE 8501
 
-# Entrypoint: run Antigravity agent in background, Streamlit in foreground
+# Entrypoint: run Gemini agent in background, Streamlit in foreground
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 

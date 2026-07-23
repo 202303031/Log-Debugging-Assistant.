@@ -2,16 +2,16 @@
 agent.py — Autonomous RAG Pipeline & Log Monitoring Agent
 
 Architecture: Log Tail → Stack Trace Extraction → Embedding (MiniLM-L6-v2)
-            → pgvector Storage → Similarity Retrieval → Ollama/Llama3
+            → pgvector Storage → Similarity Retrieval → Gemini 1.5 Flash
             → Root-Cause Analysis → Dashboard
 
 This agent watches the Java victim service's log file for ERROR/EXCEPTION
 entries, embeds them as 384-dim vectors via sentence-transformers, stores
-them in PostgreSQL with pgvector for similarity search, and uses the
-LangChain ChatOllama integration to run a local Llama 3 model that performs 
-root-cause analysis and generates corrected Java code.
+them in PostgreSQL with pgvector for similarity search, and uses Google
+Gemini 1.5 Flash (via LangChain) to perform root-cause analysis and
+generate corrected Java code.
 
-No external LLM APIs are required — the Ollama engine runs entirely locally.
+Requires a GOOGLE_API_KEY environment variable for Gemini access.
 """
 
 import re
@@ -200,15 +200,14 @@ def update_analysis(error_id: int, analysis: str) -> None:
         conn.close()
 
 
-# ======================== Antigravity Agent ========================
+# ======================== Gemini AI Agent ========================
 
 async def generate_analysis(
     new_error: str, similar_errors: list[dict]
 ) -> str:
     """
-    Instantiate a LangChain ChatOllama local agent, feed it the new error
-    plus retrieved context, and return the AI-generated root-cause
-    analysis with a suggested Java code fix.
+    Use Google Gemini 1.5 Flash via LangChain to generate root-cause
+    analysis and corrected Java code for the given stack trace.
     """
 
     # ── Build RAG context from similar past errors ──────────────
@@ -255,24 +254,32 @@ Format your response in clear Markdown with code blocks for Java code."""
         "and provide production-ready fixed code."
     )
 
-    # ── Run the Ollama agent asynchronously ────────────────
+    # ── Check for API key ──────────────────────────────────────
+    if not config.GOOGLE_API_KEY:
+        logger.error("GOOGLE_API_KEY is not set. Cannot generate analysis.")
+        return "⚠️ **Analysis unavailable:** `GOOGLE_API_KEY` is not configured. Please set it in your environment or Streamlit secrets."
+
+    # ── Run the Gemini agent ───────────────────────────────────
     try:
-        from langchain_community.chat_models import ChatOllama
+        from langchain_google_genai import ChatGoogleGenerativeAI
         from langchain_core.messages import SystemMessage, HumanMessage
-        
-        # Connect to the devops-ollama container running Llama 3
-        chat = ChatOllama(model="llama3", base_url="http://ollama:11434")
-        
+
+        chat = ChatGoogleGenerativeAI(
+            model=config.GEMINI_MODEL,
+            google_api_key=config.GOOGLE_API_KEY,
+            temperature=0.3,
+        )
+
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
+            HumanMessage(content=user_prompt),
         ]
-        
+
         response = chat.invoke(messages)
         return response.content
 
     except Exception as e:
-        logger.error(f"Ollama generation failed: {e}")
+        logger.error(f"Gemini generation failed: {e}")
         return f"⚠️ **Agent analysis failed:** {str(e)}"
 
 
@@ -298,7 +305,7 @@ async def process_error(raw_message: str) -> None:
     similar = find_similar_errors(embedding, exclude_id=error_id)
     logger.info(f"Found {len(similar)} similar past errors")
 
-    # 5. Generate root-cause analysis via Antigravity agent
+    # 5. Generate root-cause analysis via Gemini
     analysis = await generate_analysis(raw_message, similar)
 
     # 6. Persist analysis
@@ -401,7 +408,16 @@ async def main() -> None:
     """Bootstrap the agent: DB wait → load models → tail logs."""
     logger.info("=" * 60)
     logger.info("Autonomous DevOps & Log Debugging Agent starting...")
+    logger.info(f"Deployment mode: {config.DEPLOYMENT_MODE}")
+    logger.info(f"LLM: Google Gemini ({config.GEMINI_MODEL})")
     logger.info("=" * 60)
+
+    # Check for API key
+    if not config.GOOGLE_API_KEY:
+        logger.warning(
+            "⚠️  GOOGLE_API_KEY is not set! AI analysis will not work. "
+            "Get a free key at https://aistudio.google.com/apikey"
+        )
 
     # Wait for PostgreSQL
     if not wait_for_db():

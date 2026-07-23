@@ -2,11 +2,12 @@
 
 # 🔍 Autonomous DevOps & Log Debugging Assistant
 
-**An AI-powered microservices system that autonomously monitors a buggy Java service, detects errors in real time, and generates root-cause analysis with corrected code — all running locally via Docker.**
+**An AI-powered system that autonomously monitors a buggy Java service, detects errors in real time, and generates root-cause analysis with corrected code — powered by Google Gemini 1.5 Flash and pgvector RAG.**
 
 [![Java](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Gemini](https://img.shields.io/badge/Gemini-1.5_Flash-4285F4?logo=google&logoColor=white)](https://aistudio.google.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
@@ -15,38 +16,37 @@
 
 ---
 
-## 🏗️ What This Project Demonstrates
+## ✨ Features
 
-This project is a **portfolio-grade, full-stack microservices system** that showcases:
-
-| Skill Area | Implementation |
-|------------|----------------|
-| **Distributed Systems** | 4-service Docker Compose architecture with health checks, dependency ordering, and shared volumes |
-| **Java Engineering** | Spring Boot 3.2 service with scheduled tasks, algorithm implementations, and structured logging via Logback |
-| **AI / ML Engineering** | RAG pipeline with sentence-transformers embeddings, pgvector similarity search, and autonomous AI agent |
-| **Database Design** | PostgreSQL with pgvector extension for 384-dim vector storage and IVFFlat indexing |
-| **DevOps & Containerization** | Multi-stage Docker builds, Docker Compose orchestration, and production-ready health monitoring |
-| **Async Python** | `asyncio`-based log monitoring and agent interaction using the `google-antigravity` SDK |
+- **3D Interactive Dashboard** — Three.js animated topology header with floating nodes
+- **Real-Time Log Monitoring** — Autonomous agent tails Java service logs for exceptions
+- **AI Root-Cause Analysis** — Gemini 1.5 Flash generates detailed bug explanations + corrected Java code
+- **RAG Pipeline** — pgvector similarity search retrieves relevant past errors for context
+- **Manual Debugger** — Paste any stack trace and get instant AI analysis
+- **Dual Report Export** — Download structured Markdown reports and JSON payloads
+- **Free Cloud Deployment** — Deploy on Streamlit Community Cloud + Supabase (zero cost)
 
 ---
 
-## 📐 Architecture
+## 🏗️ Architecture
 
 ```mermaid
 graph TB
-    subgraph Docker Compose Network
+    subgraph Docker / Cloud
         VS["☕ Java Victim Service<br/><i>Spring Boot 3.2</i>"]
         LF["📁 Shared Log Volume<br/><i>/app/logs/app.log</i>"]
-        AG["🐍 Antigravity Agent<br/><i>async RAG Pipeline</i>"]
+        AG["🐍 AI Agent<br/><i>Gemini RAG Pipeline</i>"]
         DB["🐘 PostgreSQL + pgvector<br/><i>384-dim vectors</i>"]
-        ST["📊 Streamlit Dashboard<br/><i>port 8501</i>"]
+        ST["📊 Streamlit Dashboard<br/><i>3D Interactive UI</i>"]
+        GM["🤖 Google Gemini<br/><i>1.5 Flash API</i>"]
     end
 
     VS -->|"writes structured logs"| LF
     LF -->|"tails for ERROR/EXCEPTION"| AG
     AG -->|"embed via MiniLM-L6-v2"| DB
     AG -->|"cosine similarity search"| DB
-    AG -->|"root-cause analysis"| AG
+    AG -->|"prompt with RAG context"| GM
+    GM -->|"root-cause + code fix"| AG
     AG -->|"stores AI analysis"| DB
     DB -->|"queries errors + analyses"| ST
 ```
@@ -56,9 +56,107 @@ graph TB
 ```
 Java Error → Logback → app.log → Agent Tail → Stack Trace Extraction
     → MiniLM-L6-v2 Embedding (384-dim) → pgvector INSERT
-    → Cosine Similarity Retrieval (top-3) → Antigravity Agent Chat
+    → Cosine Similarity Retrieval (top-3) → Gemini 1.5 Flash
     → Root-Cause Analysis + Code Fix → pgvector UPDATE
     → Streamlit Dashboard renders results
+```
+
+---
+
+## 🚀 Zero-Cost Cloud Deployment
+
+Deploy the full dashboard for **free** using Streamlit Community Cloud + Supabase.
+
+### Step 1: Get a Free Google API Key
+
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Click **"Create API Key"**
+3. Copy the key — you'll need it in Step 3
+
+### Step 2: Set Up Free Supabase Database
+
+1. Go to [supabase.com](https://supabase.com) and create a free account
+2. Create a new project (choose any region, set a database password)
+3. Once the project is ready, go to **Settings → Database → Connection string (URI)**
+4. Copy the connection string (it looks like `postgresql://postgres.xxxx:password@aws-0-region.pooler.supabase.com:5432/postgres`)
+5. Go to **SQL Editor** and run this query to enable pgvector and create the table:
+
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Create the error_logs table
+CREATE TABLE IF NOT EXISTS error_logs (
+    id              SERIAL PRIMARY KEY,
+    timestamp       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    log_level       VARCHAR(10) NOT NULL,
+    service_name    VARCHAR(100) NOT NULL DEFAULT 'victim-service',
+    raw_message     TEXT NOT NULL,
+    embedding       vector(384),
+    ai_analysis     TEXT,
+    exception_type  VARCHAR(255),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp
+    ON error_logs (timestamp DESC);
+
+CREATE INDEX IF NOT EXISTS idx_error_logs_level
+    ON error_logs (log_level);
+```
+
+### Step 3: Deploy to Streamlit Community Cloud
+
+1. Push this repository to your GitHub account
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Click **"New app"** and select your repository
+4. Set the **Main file path** to: `ai-engine/app.py`
+5. Click **"Advanced settings"** → **"Secrets"** and paste:
+
+```toml
+GOOGLE_API_KEY = "your-google-api-key-from-step-1"
+DATABASE_URL = "your-supabase-connection-string-from-step-2"
+```
+
+6. Click **"Deploy"** — your app will be live in ~2 minutes! 🎉
+
+### That's it! Share the URL with your friends.
+
+---
+
+## 🖥️ Local Development (Docker)
+
+### Prerequisites
+
+- **Docker** & **Docker Compose** v2.20+
+- A `GOOGLE_API_KEY` (free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey))
+
+### 1. Clone & Configure
+
+```bash
+git clone https://github.com/202303031/Log-Debugging-Assistant..git
+cd "Log-Debugging-Assistant."
+
+# Set your API key
+export GOOGLE_API_KEY="your-key-here"
+```
+
+### 2. Build & Start
+
+```bash
+docker compose up --build -d
+```
+
+This launches:
+- **PostgreSQL** with pgvector schema initialized
+- **Java Victim Service** generating logs with random bugs
+- **AI Engine** monitoring logs + Streamlit dashboard
+
+### 3. Open the Dashboard
+
+```
+http://localhost:8501
 ```
 
 ---
@@ -67,179 +165,63 @@ Java Error → Logback → app.log → Agent Tail → Stack Trace Extraction
 
 ### 1. Victim Service (Java 17 + Spring Boot 3.2)
 
-A simulated backend worker that runs **approximation algorithms** with intentionally injected bugs:
+A simulated backend with intentionally buggy algorithms:
 
 | Algorithm | Bug Type | Exception | Root Cause |
 |-----------|----------|-----------|------------|
-| **Facility Location** (greedy approx.) | Off-by-one | `NullPointerException` | Map lookup with out-of-range key → null auto-unboxing |
-| **Bin Packing** (First-Fit Decreasing) | Undersized array | `ArrayIndexOutOfBoundsException` | Bin capacity array allocated at `n/2` instead of `n` |
-| **Array/String Ops** (palindrome, sort) | Empty string | `StringIndexOutOfBoundsException` | `charAt(0)` called without empty check |
-| **Array/String Ops** (static cache) | Memory leak | Gradual OOM | Static `List` grows on every invocation, never cleared |
+| **Facility Location** | Off-by-one | `NullPointerException` | Map lookup with out-of-range key |
+| **Bin Packing** (FFD) | Undersized array | `ArrayIndexOutOfBoundsException` | Array allocated at `n/2` |
+| **Array/String Ops** | Empty string | `StringIndexOutOfBoundsException` | `charAt(0)` without check |
 
-Errors trigger every ~20 seconds with ~40% probability, producing realistic multi-line stack traces interleaved with `INFO` health-check logs.
+### 2. AI Engine (Python + Gemini + sentence-transformers)
 
-### 2. Database (PostgreSQL + pgvector)
+RAG pipeline: **Tail → Extract → Embed → Store → Retrieve → Generate → Persist**
 
-- `error_logs` table with `vector(384)` column matching `all-MiniLM-L6-v2` output dimensions
-- IVFFlat index for fast cosine similarity search (`<=>` operator)
-- Stores raw stack traces, embeddings, exception types, and AI-generated analyses
+### 3. Dashboard (Streamlit + Three.js)
 
-### 3. AI Engine (Python + google-antigravity SDK)
-
-The RAG pipeline runs as an async Python worker:
-
-1. **Tail** — monitors `app.log` via file-seek position tracking
-2. **Extract** — parses multi-line Java stack traces (including `Caused by` chains)
-3. **Embed** — converts traces to 384-dim vectors via `sentence-transformers`
-4. **Store** — inserts into PostgreSQL with pgvector
-5. **Retrieve** — cosine similarity search for top-3 similar past errors
-6. **Generate** — `google-antigravity` SDK's `LocalAgentConfig` + `Agent.chat()` produces root-cause analysis and corrected Java code
-7. **Persist** — stores the AI analysis back in the database
-
-```python
-# Core agent pattern (from agent.py)
-agent_config = LocalAgentConfig(
-    system_instructions="You are a senior Java engineer..."
-)
-async with Agent(agent_config) as agent:
-    response = await agent.chat(prompt_with_rag_context)
-```
-
-### 4. Dashboard (Streamlit)
-
-- **Sidebar**: scrollable list of recent errors with exception type and timestamp
-- **Main Panel**: raw stack trace (syntax-highlighted) + AI root-cause analysis + suggested Java fix (Markdown)
-- Auto-refresh capability
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Docker** & **Docker Compose** v2.20+
-- ~4 GB free disk space (for Docker images and embedding model)
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/autonomous-devops-assistant.git
-cd autonomous-devops-assistant
-```
-
-### 2. Build & Start (One Command)
-
-```bash
-docker compose up --build -d
-```
-
-This launches all 3 services:
-- **PostgreSQL** with pgvector schema initialized
-- **Java Victim Service** begins generating logs and errors immediately
-- **AI Engine** downloads the embedding model (first build only), starts monitoring
-
-### 3. Open the Dashboard
-
-```
-http://localhost:8501
-```
-
-Within **1–2 minutes**, errors will appear in the sidebar. Click any error to see the full stack trace and AI-generated analysis.
-
-### 4. Watch the Logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Just the AI engine
-docker compose logs -f ai-engine
-
-# Just the Java service
-docker compose logs -f victim-service
-```
-
----
-
-## 🧪 Local Testing Guide
-
-### Step-by-Step Verification
-
-```bash
-# 1. Verify all containers are healthy
-docker compose ps
-
-# 2. Confirm the Java service is writing logs
-docker compose exec victim-service cat /app/logs/app.log | tail -20
-
-# 3. Check errors are being ingested into PostgreSQL
-docker compose exec postgres psql -U devops -d devops_logs \
-    -c "SELECT id, timestamp, exception_type FROM error_logs ORDER BY timestamp DESC LIMIT 5;"
-
-# 4. Verify the Antigravity agent is processing errors
-docker compose logs ai-engine | grep "Processing new error"
-
-# 5. Confirm Streamlit is responding
-curl -s http://localhost:8501 | head -5
-```
-
-### Force More Errors
-
-The victim service triggers bugs automatically. To accelerate:
-
-```bash
-docker compose restart victim-service
-```
-
-### Clean Restart
-
-```bash
-docker compose down -v    # removes containers + volumes (clean slate)
-docker compose up --build -d
-```
+- 3D interactive topology header
+- Side-by-side stack trace + AI analysis
+- Dual export (Markdown + JSON)
+- Cache management controls
 
 ---
 
 ## 📁 Project Structure
 
 ```
-autonomous-devops-assistant/
+Log-Debugging-Assistant/
 │
-├── docker-compose.yml                   # 3-service orchestration
-├── push-to-github.sh                    # Git init + push script
-├── README.md                            # This file
+├── docker-compose.yml                  # 3-service orchestration
+├── README.md
 ├── .gitignore
 │
-├── victim-service/                      # ☕ Java Spring Boot 3.2
-│   ├── Dockerfile                       #   Multi-stage: Maven → JRE 17
+├── victim-service/                     # ☕ Java Spring Boot 3.2
+│   ├── Dockerfile
 │   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/devops/victim/
-│       │   ├── VictimApplication.java   #   @SpringBootApplication entry
-│       │   ├── config/
-│       │   │   └── AppConfig.java
-│       │   ├── scheduler/
-│       │   │   └── TaskScheduler.java   #   @Scheduled every 20s
-│       │   └── algorithms/
-│       │       ├── FacilityLocation.java  # NPE bug (off-by-one map key)
-│       │       ├── BinPacking.java        # AIOOBE bug (undersized array)
-│       │       └── ArrayStringOps.java    # SIOOBE bug + memory leak
-│       └── resources/
-│           ├── application.properties
-│           └── logback-spring.xml       #   Logs to /app/logs/app.log
+│   └── src/main/java/com/devops/victim/
+│       ├── VictimApplication.java
+│       ├── config/AppConfig.java
+│       ├── scheduler/TaskScheduler.java
+│       └── algorithms/
+│           ├── FacilityLocation.java
+│           ├── BinPacking.java
+│           └── ArrayStringOps.java
 │
-├── database/                            # 🐘 PostgreSQL + pgvector
-│   └── init.sql                         #   Schema + IVFFlat index
+├── database/
+│   └── init.sql                        # pgvector schema + indexes
 │
-├── ai-engine/                           # 🐍 Python 3.11
-│   ├── Dockerfile                       #   Slim + pre-cached model
-│   ├── entrypoint.sh                    #   Agent (bg) + Streamlit (fg)
-│   ├── requirements.txt                 #   google-antigravity, sentence-transformers
-│   ├── config.py                        #   Env-var configuration
-│   ├── agent.py                         #   Async RAG pipeline
-│   └── app.py                           #   Streamlit dashboard (~50 lines)
+├── ai-engine/                          # 🐍 Python 3.11
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+│   ├── requirements.txt
+│   ├── config.py                       # Auto-detects Docker vs Cloud
+│   ├── agent.py                        # Async RAG pipeline + Gemini
+│   ├── app.py                          # Streamlit + Three.js dashboard
+│   └── .streamlit/
+│       ├── config.toml                 # Dark theme
+│       └── secrets.toml.example        # Template for secrets
 │
-└── logs/                                # 📁 Docker shared volume
+└── logs/
     └── .gitkeep
 ```
 
@@ -249,47 +231,30 @@ autonomous-devops-assistant/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_HOST` | `postgres` | PostgreSQL hostname (Docker service name) |
+| `GOOGLE_API_KEY` | *(required)* | Google AI Studio API key for Gemini |
+| `DATABASE_URL` | *(optional)* | Full Supabase connection string (cloud mode) |
+| `DB_HOST` | `postgres` | PostgreSQL hostname (Docker mode) |
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `devops_logs` | Database name |
 | `DB_USER` | `devops` | Database user |
 | `DB_PASSWORD` | `devops_secret` | Database password |
-| `LOG_FILE_PATH` | `/app/logs/app.log` | Path to the Java service's log file |
-| `POLL_INTERVAL_SECONDS` | `5` | How often the agent polls for new log entries |
-
-> **Note:** No external API keys are required. The `google-antigravity` SDK runs the AI agent locally.
+| `LOG_FILE_PATH` | `/app/logs/app.log` | Path to Java log file |
+| `GEMINI_MODEL` | `gemini-1.5-flash` | Which Gemini model to use |
 
 ---
 
-## 📤 Push to GitHub
-
-```bash
-# Option 1: Use the provided script
-chmod +x push-to-github.sh
-./push-to-github.sh https://github.com/YOUR_USERNAME/autonomous-devops-assistant.git
-
-# Option 2: Manual commands
-git init
-git add -A
-git commit -m "feat: Autonomous DevOps & Log Debugging Assistant"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/autonomous-devops-assistant.git
-git push -u origin main
-```
-
----
-
-## 🛠️ Tech Stack Summary
+## 🛠️ Tech Stack
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Docker Compose                       │
 ├──────────────┬──────────────────┬───────────────────────┤
 │  Java 17     │  Python 3.11     │  PostgreSQL 16        │
-│  Spring Boot │  antigravity SDK │  pgvector extension   │
-│  Logback     │  sentence-xfmrs  │  IVFFlat indexing     │
+│  Spring Boot │  Gemini 1.5 Flash│  pgvector extension   │
+│  Logback     │  LangChain       │  IVFFlat indexing     │
 │  Maven       │  Streamlit       │  384-dim vectors      │
-│  @Scheduled  │  asyncio         │  cosine distance      │
+│  @Scheduled  │  Three.js        │  cosine distance      │
+│              │  sentence-xfmrs  │                       │
 └──────────────┴──────────────────┴───────────────────────┘
 ```
 
@@ -298,4 +263,3 @@ git push -u origin main
 ## 📄 License
 
 MIT
-# Log-Debugging-Assistant.

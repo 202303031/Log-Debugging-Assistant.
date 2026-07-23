@@ -43,7 +43,7 @@ services:
       - devops-network
     restart: unless-stopped
 
-  # ── Python AI Engine (Antigravity Agent + Streamlit) ───────
+  # ── Python AI Engine (Gemini Agent + Streamlit) ────────────
   ai-engine:
     build:
       context: ./ai-engine
@@ -61,6 +61,7 @@ services:
       - DB_USER=devops
       - DB_PASSWORD=devops_secret
       - LOG_FILE_PATH=/app/logs/app.log
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
     volumes:
       - ./logs:/app/logs
     ports:
@@ -69,34 +70,8 @@ services:
       - devops-network
     restart: unless-stopped
 
-  # ── Ollama Local LLM ───────────────────────────────────────
-  ollama:
-    image: ollama/ollama:latest
-    container_name: devops-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - devops-network
-    restart: unless-stopped
-
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: devops-ollama-init
-    depends_on:
-      - ollama
-    networks:
-      - devops-network
-    entrypoint: /bin/sh
-    command: -c "sleep 5 && ollama pull llama3"
-    environment:
-      - OLLAMA_HOST=http://ollama:11434
-
 volumes:
   postgres_data:
-    driver: local
-  ollama_data:
     driver: local
 
 networks:
