@@ -198,14 +198,17 @@ components.html(THREE_JS_HEADER, height=230)
 def get_connection():
     """Connect to PostgreSQL (Supabase or local Docker)."""
     try:
-        conn = psycopg2.connect(
-            host=config.DB_HOST,
-            port=config.DB_PORT,
-            dbname=config.DB_NAME,
-            user=config.DB_USER,
-            password=config.DB_PASSWORD,
-            sslmode="require" if config.DEPLOYMENT_MODE == "CLOUD" else "prefer",
-        )
+        if getattr(config, "DATABASE_URL", None):
+            conn = psycopg2.connect(config.DATABASE_URL, sslmode="require" if config.DEPLOYMENT_MODE == "CLOUD" else "prefer")
+        else:
+            conn = psycopg2.connect(
+                host=config.DB_HOST,
+                port=config.DB_PORT,
+                dbname=config.DB_NAME,
+                user=config.DB_USER,
+                password=config.DB_PASSWORD,
+                sslmode="prefer",
+            )
         return conn
     except Exception as e:
         st.error(f"❌ Database connection failed: {e}")
