@@ -1,21 +1,14 @@
 # ============================================
-# AI Engine Dependencies
+# Streamlit Dashboard Dependencies
 # ============================================
 
 # LLM Integration (Google Gemini via LangChain)
 langchain
 langchain-google-genai
 
-# Embeddings (local, no API key required)
-sentence-transformers
-torch
-
 # Database (PostgreSQL + pgvector)
 psycopg2-binary==2.9.9
 pgvector==0.3.2
-
-# Log file monitoring
-watchdog==4.0.1
 
 # Dashboard
 streamlit==1.37.1

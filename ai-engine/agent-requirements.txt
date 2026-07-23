@@ -1,0 +1,8 @@
+# ============================================
+# Background Agent Dependencies
+# (Used only in Docker, not on Streamlit Cloud)
+# ============================================
+
+sentence-transformers
+torch
+watchdog==4.0.1
