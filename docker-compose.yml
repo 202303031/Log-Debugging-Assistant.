@@ -26,6 +26,39 @@ services:
     networks:
       - devops-network
 
+  # ── Ollama (Local LLM Server) ──────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: devops-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  # ── Ollama Model Puller (one-shot init container) ──────────
+  ollama-pull:
+    image: curlimages/curl:latest
+    container_name: devops-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "echo 'Pulling llama3.2 model...' &&
+             curl -s http://ollama:11434/api/pull -d '{\"name\": \"llama3.2\"}' &&
+             echo 'Model pull complete!'"
+    networks:
+      - devops-network
+    restart: "no"
+
   # ── Java Victim Service ────────────────────────────────────
   victim-service:
     build:
@@ -43,7 +76,7 @@ services:
       - devops-network
     restart: unless-stopped
 
-  # ── Python AI Engine (Gemini Agent + Streamlit) ────────────
+  # ── Python AI Engine (Ollama Agent + Streamlit) ────────────
   ai-engine:
     build:
       context: ./ai-engine
@@ -54,6 +87,8 @@ services:
         condition: service_healthy
       victim-service:
         condition: service_started
+      ollama:
+        condition: service_healthy
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -61,7 +96,8 @@ services:
       - DB_USER=devops
       - DB_PASSWORD=devops_secret
       - LOG_FILE_PATH=/app/logs/app.log
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2
     volumes:
       - ./logs:/app/logs
     ports:
@@ -72,6 +108,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  ollama_data:
     driver: local
 
 networks:

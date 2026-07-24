@@ -2,16 +2,16 @@
 agent.py — Autonomous RAG Pipeline & Log Monitoring Agent
 
 Architecture: Log Tail → Stack Trace Extraction → Embedding (MiniLM-L6-v2)
-            → pgvector Storage → Similarity Retrieval → Gemini 1.5 Flash
+            → pgvector Storage → Similarity Retrieval → Ollama (local LLM)
             → Root-Cause Analysis → Dashboard
 
 This agent watches the Java victim service's log file for ERROR/EXCEPTION
 entries, embeds them as 384-dim vectors via sentence-transformers, stores
-them in PostgreSQL with pgvector for similarity search, and uses Google
-Gemini 1.5 Flash (via LangChain) to perform root-cause analysis and
-generate corrected Java code.
+them in PostgreSQL with pgvector for similarity search, and uses a local
+Ollama LLM (via LangChain) to perform root-cause analysis and generate
+corrected Java code.
 
-Requires a GOOGLE_API_KEY environment variable for Gemini access.
+Requires Ollama running locally or as a Docker service.
 """
 
 import re
@@ -200,13 +200,13 @@ def update_analysis(error_id: int, analysis: str) -> None:
         conn.close()
 
 
-# ======================== Gemini AI Agent ========================
+# ======================== Ollama AI Agent ========================
 
 async def generate_analysis(
     new_error: str, similar_errors: list[dict]
 ) -> str:
     """
-    Use Google Gemini 1.5 Flash via LangChain to generate root-cause
+    Use a local Ollama LLM via LangChain to generate root-cause
     analysis and corrected Java code for the given stack trace.
     """
 
@@ -254,19 +254,14 @@ Format your response in clear Markdown with code blocks for Java code."""
         "and provide production-ready fixed code."
     )
 
-    # ── Check for API key ──────────────────────────────────────
-    if not config.GOOGLE_API_KEY:
-        logger.error("GOOGLE_API_KEY is not set. Cannot generate analysis.")
-        return "⚠️ **Analysis unavailable:** `GOOGLE_API_KEY` is not configured. Please set it in your environment or Streamlit secrets."
-
-    # ── Run the Gemini agent ───────────────────────────────────
+    # ── Run the Ollama agent ───────────────────────────────────
     try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_ollama import ChatOllama
         from langchain_core.messages import SystemMessage, HumanMessage
 
-        chat = ChatGoogleGenerativeAI(
-            model=config.GEMINI_MODEL,
-            google_api_key=config.GOOGLE_API_KEY,
+        chat = ChatOllama(
+            model=config.OLLAMA_MODEL,
+            base_url=config.OLLAMA_BASE_URL,
             temperature=0.3,
         )
 
@@ -279,7 +274,7 @@ Format your response in clear Markdown with code blocks for Java code."""
         return response.content
 
     except Exception as e:
-        logger.error(f"Gemini generation failed: {e}")
+        logger.error(f"Ollama generation failed: {e}")
         return f"⚠️ **Agent analysis failed:** {str(e)}"
 
 
@@ -305,7 +300,7 @@ async def process_error(raw_message: str) -> None:
     similar = find_similar_errors(embedding, exclude_id=error_id)
     logger.info(f"Found {len(similar)} similar past errors")
 
-    # 5. Generate root-cause analysis via Gemini
+    # 5. Generate root-cause analysis via Ollama
     analysis = await generate_analysis(raw_message, similar)
 
     # 6. Persist analysis
@@ -409,15 +404,9 @@ async def main() -> None:
     logger.info("=" * 60)
     logger.info("Autonomous DevOps & Log Debugging Agent starting...")
     logger.info(f"Deployment mode: {config.DEPLOYMENT_MODE}")
-    logger.info(f"LLM: Google Gemini ({config.GEMINI_MODEL})")
+    logger.info(f"LLM: Ollama ({config.OLLAMA_MODEL})")
+    logger.info(f"Ollama URL: {config.OLLAMA_BASE_URL}")
     logger.info("=" * 60)
-
-    # Check for API key
-    if not config.GOOGLE_API_KEY:
-        logger.warning(
-            "⚠️  GOOGLE_API_KEY is not set! AI analysis will not work. "
-            "Get a free key at https://aistudio.google.com/apikey"
-        )
 
     # Wait for PostgreSQL
     if not wait_for_db():

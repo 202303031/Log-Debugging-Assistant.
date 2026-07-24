@@ -53,9 +53,9 @@ else:
     DB_USER = _get("DB_USER", "devops")
     DB_PASSWORD = _get("DB_PASSWORD", "devops_secret")
 
-# ======================== Google AI (Gemini) ========================
-GOOGLE_API_KEY = _get("GOOGLE_API_KEY", "")
-GEMINI_MODEL = _get("GEMINI_MODEL", "gemini-1.5-flash")
+# ======================== Ollama (Local LLM) ========================
+OLLAMA_BASE_URL = _get("OLLAMA_BASE_URL", "http://ollama:11434")
+OLLAMA_MODEL = _get("OLLAMA_MODEL", "llama3.2")
 
 # ======================== Log Monitoring ========================
 LOG_FILE_PATH = _get("LOG_FILE_PATH", "/app/logs/app.log")

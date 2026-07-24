@@ -2,9 +2,9 @@
 # Streamlit Dashboard Dependencies
 # ============================================
 
-# LLM Integration (Google Gemini via LangChain)
+# LLM Integration (Ollama via LangChain)
 langchain
-langchain-google-genai
+langchain-ollama
 
 # Database (PostgreSQL + pgvector)
 psycopg2-binary
